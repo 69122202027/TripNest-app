@@ -164,7 +164,6 @@
                 </div>
             </div>
 
-           
             <!-- Graph Canvas Interactive Explorer -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Map Canvas View -->
@@ -379,7 +378,7 @@
                     </div>
                 </div>
 
-                <!-- Right: Insights -->
+                <!-- Right: Insights & Map Simulation -->
                 <div class="lg:col-span-5 space-y-6">
                     <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
                         <div class="flex justify-between items-center">
@@ -388,9 +387,18 @@
                                 <span>แผนที่การเดินทางรายวัน</span>
                             </h3>
                         </div>
-                        <div class="w-full h-64 bg-slate-900 rounded-2xl border border-slate-700 flex flex-col items-center justify-center text-slate-400 text-xs p-4 text-center">
-                            <i data-lucide="navigation" class="w-8 h-8 text-brand-coral mb-2 animate-bounce"></i>
-                            <span class="font-semibold text-slate-200">ระบบจำลองเส้นทางอัจฉริยะ</span>
+                        <!-- CANVASES FOR SIMULATION ROUTE -->
+                        <div class="relative w-full h-72 bg-slate-900 rounded-2xl overflow-hidden shadow-inner border border-slate-700">
+                            <canvas id="plannerMapCanvas" class="w-full h-full cursor-pointer"></canvas>
+                            
+                            <div class="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700 text-xs text-slate-200 flex items-center gap-2">
+                                <i data-lucide="navigation" class="w-4 h-4 text-brand-coral animate-pulse"></i>
+                                <span class="font-semibold">ระบบจำลองเส้นทางอัจฉริยะ</span>
+                            </div>
+
+                            <div class="absolute bottom-3 right-3 bg-slate-800/80 text-[10px] text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 backdrop-blur-sm">
+                                Realtime Interactive Canvas
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -496,13 +504,9 @@
                         <input type="number" id="bookNights" value="1" min="1" max="10" onchange="updateModalPrice()" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">จำนวนผู้พัก</label>
-                        <input type="number" id="bookGuests" value="2" min="1" max="5" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">ราคารวมโดยประมาณ</label>
+                        <div id="modalTotalPrice" class="py-2 text-base font-bold text-brand-amber">0 THB</div>
                     </div>
-                </div>
-                <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 flex justify-between items-center text-sm font-semibold">
-                    <span>ราคารวมสุทธิ:</span>
-                    <span id="modalTotalPrice" class="text-brand-amber text-base">0 THB</span>
                 </div>
             </div>
 
@@ -510,183 +514,70 @@
                 <button onclick="closeBookingModal()" class="w-1/2 py-2.5 border border-gray-300 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-50 transition">
                     ยกเลิก
                 </button>
-                <button onclick="confirmBooking()" class="w-1/2 py-2.5 bg-brand-teal text-white rounded-xl text-xs font-semibold hover:bg-opacity-90 transition shadow-md">
-                    ยืนยันการจองห้องพัก
+                <button onclick="confirmBookingSubmit()" class="w-1/2 py-2.5 bg-brand-teal text-white rounded-xl text-xs font-semibold hover:bg-opacity-90 transition shadow-sm">
+                    ยืนยันจองทันที
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- FOOTER -->
-    <footer class="bg-white border-t border-gray-200 py-6 mt-12">
-        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-500 space-y-2">
-            <div class="flex justify-center items-center space-x-2 text-brand-teal font-semibold">
-                <span>TripNest Multi-Tier Hotel & Router Platform</span>
-            </div>
-            <p>ระบบจองโรงแรมและเปรียบเทียบที่พักครอบคลุมทุกจังหวัดทั่วประเทศไทย</p>
-        </div>
-    </footer>
-
+    <!-- JAVASCRIPT LOGIC -->
     <script>
-        let devModeActive = false;
-        let activeDay = 1;
-
-        // รายชื่อจังหวัดตัวอย่างและจังหวัดหลักในเครือข่าย
-        const ALL_PROVINCES = [
-            { id: 'BKK', name: 'กรุงเทพมหานคร', region: 'กลาง', img: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800&auto=format&fit=crop&q=80', desc: 'มหานครศูนย์กลางการเดินทาง วัฒนธรรม และย่านช้อปปิ้งระดับโลก' },
-            { id: 'CNX', name: 'เชียงใหม่', region: 'เหนือ', img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&auto=format&fit=crop&q=80', desc: 'เมืองแห่งธรรมชาติ วัฒนธรรมล้านนา ยอดดอยสูง และคาเฟ่สุดชิค' },
-            { id: 'HKT', name: 'ภูเก็ต', region: 'ใต้', img: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&auto=format&fit=crop&q=80', desc: 'ไข่มุกแห่งอันดามัน ชายหาดสวยงาม น้ำทะเลใส และหาดทรายขาว' },
-            { id: 'PYX', name: 'ชลบุรี (พัทยา)', region: 'ตะวันออก', img: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&auto=format&fit=crop&q=80', desc: 'เมืองท่องเที่ยวชายทะเลใกล้กรุงเทพฯ กิจกรรมทางน้ำและสีสันยามค่ำคืน' },
-            { id: 'KBV', name: 'กระบี่', region: 'ใต้', img: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&auto=format&fit=crop&q=80', desc: 'เมืองชายฝั่งอันดามัน โดดเด่นด้วยเขาหินปูน เกาะสวย และจุดดำน้ำ' },
-            { id: 'AYU', name: 'พระนครศรีอยุธยา', region: 'กลาง', img: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800&auto=format&fit=crop&q=80', desc: 'เมืองมรดกโลก อุดมด้วยวัดวาอารามเก่าแก่และประวัติศาสตร์อันทรงคุณค่า' },
-            { id: 'NAN', name: 'น่าน', region: 'เหนือ', img: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80', desc: 'เมืองสโลว์ไลฟ์กลางขุนเขา สัมผัสวิถีชีวิตเงียบสงบและธรรมชาติอันบริสุทธิ์' },
-            { id: 'HYI', name: 'สงขลา (หาดใหญ่)', region: 'ใต้', img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80', desc: 'ศูนย์กลางการค้า การท่องเที่ยว และอาหารอร่อยแดนใต้' },
-            { id: 'NKR', name: 'นครราชสีมา (โคราช)', region: 'อีสาน', img: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&auto=format&fit=crop&q=80', desc: 'ประตูสู่อีสาน แหล่งท่องเที่ยวธรรมชาติเขาใหญ่และโอโซนบริสุทธิ์' },
-            { id: 'KBI', name: 'กาญจนบุรี', region: 'ตะวันตก', img: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&auto=format&fit=crop&q=80', desc: 'เมืองแห่งแม่น้ำซองกาเลีย สะพานข้ามแม่น้ำแคว และแพที่พักธรรมชาติ' }
-        ];
-
-        // Graph Nodes Dynamic Coordinates
-        const graphNodes = [
-            { id: 'BKK', name: 'กรุงเทพฯ', x: 0.45, y: 0.55 },
-            { id: 'CNX', name: 'เชียงใหม่', x: 0.35, y: 0.20 },
-            { id: 'HKT', name: 'ภูเก็ต', x: 0.25, y: 0.85 },
-            { id: 'PYX', name: 'พัทยา (ชลบุรี)', x: 0.55, y: 0.62 },
-            { id: 'KBV', name: 'กระบี่', x: 0.35, y: 0.82 },
-            { id: 'AYU', name: 'อยุธยา', x: 0.46, y: 0.45 },
-            { id: 'NAN', name: 'น่าน', x: 0.50, y: 0.18 },
-            { id: 'HYI', name: 'หาดใหญ่', x: 0.38, y: 0.92 },
-            { id: 'NKR', name: 'นครราชสีมา', x: 0.60, y: 0.48 },
-            { id: 'KBI', name: 'กาญจนบุรี', x: 0.32, y: 0.52 }
-        ];
+        // --- MOCK DATA ---
+        const provinces = {
+            'BKK': { name: 'กรุงเทพมหานคร', desc: 'เมืองหลวงที่เต็มไปด้วยแสงสี ร้านอาหารระดับมิชลิน และที่พักหรูหรา', img: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800&auto=format&fit=crop&q=80', x: 0.45, y: 0.65 },
+            'CNX': { name: 'เชียงใหม่', desc: 'สัมผัสธรรมชาติ ภูเขาสูง และวัฒนธรรมล้านนาในบรรยากาศอบอุ่น', img: 'https://images.unsplash.com/photo-1513415564515-763d91423bdd?w=800&auto=format&fit=crop&q=80', x: 0.3, y: 0.2 },
+            'HKT': { name: 'ภูเก็ต', desc: 'ไข่มุกแห่งอันดามัน ชายหาดสวยงาม น้ำทะเลใส และรีสอร์ทระดับโลก', img: 'https://images.unsplash.com/photo-1589394815804-964ed0be2eb5?w=800&auto=format&fit=crop&q=80', x: 0.25, y: 0.85 },
+            'CBR': { name: 'ชลบุรี (พัทยา)', desc: 'เมืองชายทะเลใกล้กรุงเทพฯ ครบครันด้วยที่พัก กิจกรรมทางน้ำ และความบันเทิง', img: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=800&auto=format&fit=crop&q=80', x: 0.55, y: 0.7 }
+        };
 
         const graphEdges = [
-            { from: 'BKK', to: 'AYU', distance: 80, cost: 150 },
-            { from: 'BKK', to: 'PYX', distance: 140, cost: 300 },
-            { from: 'BKK', to: 'CNX', distance: 680, cost: 1200 },
-            { from: 'BKK', to: 'HKT', distance: 840, cost: 1800 },
-            { from: 'BKK', to: 'KBI', distance: 130, cost: 250 },
-            { from: 'BKK', to: 'NKR', distance: 260, cost: 450 },
-            { from: 'AYU', to: 'CNX', distance: 600, cost: 1100 },
-            { from: 'CNX', to: 'NAN', distance: 320, cost: 650 },
-            { from: 'HKT', to: 'KBV', distance: 160, cost: 450 },
-            { from: 'KBV', to: 'HYI', distance: 280, cost: 600 },
-            { from: 'PYX', to: 'HKT', distance: 920, cost: 2100 }
+            { from: 'BKK', to: 'CNX', dist: 680, cost: 1200 },
+            { from: 'BKK', to: 'CBR', dist: 120, cost: 300 },
+            { from: 'BKK', to: 'HKT', dist: 840, cost: 1800 },
+            { from: 'CNX', to: 'HKT', dist: 1300, cost: 2500 }
         ];
 
-        const adjacencyList = {};
-        graphNodes.forEach(node => adjacencyList[node.id] = []);
-        graphEdges.forEach(edge => {
-            adjacencyList[edge.from].push({ node: edge.to, distance: edge.distance, cost: edge.cost });
-            adjacencyList[edge.to].push({ node: edge.from, distance: edge.distance, cost: edge.cost });
-        });
+        const hotelsData = [
+            { id: 1, name: 'The Siam Luxury Hotel', province: 'BKK', stars: 5, price: 8500, rating: 4.9, img: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=80' },
+            { id: 2, name: 'Bangkok City Hostel', province: 'BKK', stars: 2, price: 650, rating: 4.2, img: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=600&auto=format&fit=crop&q=80' },
+            { id: 3, name: 'Lanna Boutique Resort', province: 'CNX', stars: 4, price: 2800, rating: 4.7, img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&auto=format&fit=crop&q=80' },
+            { id: 4, name: 'Phuket Sea Breeze Villa', province: 'HKT', stars: 5, price: 12000, rating: 4.8, img: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&auto=format&fit=crop&q=80' },
+            { id: 5, name: 'Pattaya Budget Stay', province: 'CBR', stars: 2, price: 890, rating: 4.0, img: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&auto=format&fit=crop&q=80' }
+        ];
 
-        /* ==========================================================
-           MULTI-TIER PRICING HOTEL DATA ENGINE (DYNAMIC GENERATOR)
-           ========================================================== */
-        const hotelTemplates = {
-            budget: [
-                { suffix: 'Express Hostel & Stay', star: 2, priceMin: 500, priceMax: 950, rating: 4.3, badge: 'ราคาประหยัดสุดๆ', desc: 'ห้องพักสะอาด เดินทางสะดวก ราคาสบายกระเป๋า พร้อมฟรี Wi-Fi และเครื่องปรับอากาศ', amenities: ['ฟรี Wi-Fi', 'เครื่องปรับอากาศ', 'แผนกต้อนรับ 24 ชม.'] },
-                { suffix: 'Bed & Breakfast Nest', star: 2, priceMin: 700, priceMax: 1200, rating: 4.4, badge: 'คุ้มค่าที่สุด', desc: 'โฮสเทลและที่พักดีไซน์ทันสมัย บรรยากาศอบอุ่น ใกล้แหล่งอาหารและขนส่งสาธารณะ', amenities: ['รวมอาหารเช้า', 'ฟรี Wi-Fi', 'ที่จอดรถ'] }
+        let itineraryData = {
+            1: [
+                { id: 101, time: '08:30', title: 'ออกเดินทางจากจุดเริ่มต้น', category: '🚗 การเดินทาง' },
+                { id: 102, time: '12:00', title: 'แวะรับประทานอาหารกลางวันร้านดัง', category: '🍽️ อาหาร / คาเฟ่' },
+                { id: 103, time: '15:00', title: 'เช็คอินเข้าที่พักพักผ่อนตามอัธยาศัย', category: '🏨 ที่พัก' }
             ],
-            midRange: [
-                { suffix: 'Boutique Hotel & Suites', star: 3, priceMin: 1500, priceMax: 2400, rating: 4.6, badge: 'ยอดนิยม', desc: 'โรงแรมสไตล์บูทีค ตกแต่งสวยงาม สิ่งอำนวยความสะดวกครบครัน ใกล้จุดเช็คอินสำคัญ', amenities: ['สระว่ายน้ำ', 'ฟิตเนส', 'ฟรี Wi-Fi', 'รวมอาหารเช้า'] },
-                { suffix: 'Grand City Comfort Resort', star: 4, priceMin: 2200, priceMax: 3500, rating: 4.7, badge: 'แนะนำพิเศษ', desc: 'โรงแรมระดับ 4 ดาว พร้อมห้องพักกว้างขวาง สระว่ายน้ำกลางแจ้ง และห้องอาหารรสเลิศ', amenities: ['สระว่ายน้ำ', 'สปา', 'ห้องอาหาร', 'ที่จอดรถกว้างขวาง'] }
+            2: [
+                { id: 201, time: '09:00', title: 'ชมวิวถ่ายรูป ณ จุดเช็คอินยอดฮิต', category: '🏖️ ทะเล / เกาะ' }
             ],
-            luxury: [
-                { suffix: 'Royal Luxury Spa & Villa', star: 5, priceMin: 4500, priceMax: 12500, rating: 4.9, badge: 'หรูหรา 5 ดาว', desc: 'ประสบการณ์การพักผ่อนระดับพรีเมียม บริการเต็มรูปแบบ วิวสวยระดับพาโนรามา', amenities: ['สระว่ายน้ำอินฟินิตี้', 'สปาชั้นนำ', 'บริการรูมเซอร์วิส 24 ชม.', 'ติดชายหาด/จุดชมวิว'] }
+            3: [
+                { id: 301, time: '11:00', title: 'ซื้อของฝากและเดินทางกลับโดยสวัสดิภาพ', category: '🚗 การเดินทาง' }
             ]
         };
 
-        const hotelImagesPool = [
-            'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&auto=format&fit=crop&q=80',
-            'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&auto=format&fit=crop&q=80',
-            'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=600&auto=format&fit=crop&q=80',
-            'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&auto=format&fit=crop&q=80',
-            'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600&auto=format&fit=crop&q=80',
-            'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=600&auto=format&fit=crop&q=80'
-        ];
-
-        // สร้างข้อมูลโรงแรม Multi-Tier Dynamic ให้ทุกจังหวัด
-        function generateHotelsForProvince(provId) {
-            const provinceObj = ALL_PROVINCES.find(p => p.id === provId) || { name: 'จังหวัดท่องเที่ยว', id: provId };
-            const pName = provinceObj.name.replace(/(จังหวัด|ชลบุรี \(|\))/g, '');
-
-            const hotels = [];
-            let imgIdx = Math.abs(provId.charCodeAt(0)) % hotelImagesPool.length;
-
-            // 1-2. Budget Hotels (1-2 Stars)
-            hotelTemplates.budget.forEach((tmpl, idx) => {
-                hotels.push({
-                    id: `${provId}_budget_${idx+1}`,
-                    provinceId: provId,
-                    name: `${pName} ${tmpl.suffix}`,
-                    tier: 'budget',
-                    stars: tmpl.star,
-                    price: Math.floor(tmpl.priceMin + Math.random() * (tmpl.priceMax - tmpl.priceMin)),
-                    rating: tmpl.rating,
-                    badge: tmpl.badge,
-                    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-                    desc: tmpl.desc,
-                    amenities: tmpl.amenities,
-                    image: hotelImagesPool[(imgIdx + idx) % hotelImagesPool.length]
-                });
-            });
-
-            // 3-4. Mid-Range Hotels (3-4 Stars)
-            hotelTemplates.midRange.forEach((tmpl, idx) => {
-                hotels.push({
-                    id: `${provId}_mid_${idx+1}`,
-                    provinceId: provId,
-                    name: `${pName} ${tmpl.suffix}`,
-                    tier: 'mid',
-                    stars: tmpl.star,
-                    price: Math.floor(tmpl.priceMin + Math.random() * (tmpl.priceMax - tmpl.priceMin)),
-                    rating: tmpl.rating,
-                    badge: tmpl.badge,
-                    badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
-                    desc: tmpl.desc,
-                    amenities: tmpl.amenities,
-                    image: hotelImagesPool[(imgIdx + idx + 2) % hotelImagesPool.length]
-                });
-            });
-
-            // 5. Luxury Hotel (5 Stars)
-            hotelTemplates.luxury.forEach((tmpl, idx) => {
-                hotels.push({
-                    id: `${provId}_lux_${idx+1}`,
-                    provinceId: provId,
-                    name: `${pName} ${tmpl.suffix}`,
-                    tier: 'luxury',
-                    stars: tmpl.star,
-                    price: Math.floor(tmpl.priceMin + Math.random() * (tmpl.priceMax - tmpl.priceMin)),
-                    rating: tmpl.rating,
-                    badge: tmpl.badge,
-                    badgeColor: 'bg-amber-100 text-amber-900 border-amber-300 font-bold',
-                    desc: tmpl.desc,
-                    amenities: tmpl.amenities,
-                    image: hotelImagesPool[(imgIdx + idx + 4) % hotelImagesPool.length]
-                });
-            });
-
-            return hotels;
-        }
-
-        // Global State & User Bookings
-        let currentProvinceHotels = [];
-        let userBookings = [];
+        let currentActiveDay = 1;
         let selectedHotelForBooking = null;
+        let userBookings = [];
 
-        // LocalStorage Planner Data
-        let itineraryData = JSON.parse(localStorage.getItem('tripnest_itinerary_data')) || {
-            1: [{ id: 101, time: '09:00', title: 'เช็คอินการเดินทางจุดเริ่มต้น', category: '🚗 การเดินทาง' }],
-            2: [], 3: []
-        };
+        // --- INIT APP ---
+        document.addEventListener("DOMContentLoaded", () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
 
-        function saveItineraryToStorage() {
-            localStorage.setItem('tripnest_itinerary_data', JSON.stringify(itineraryData));
-        }
+            populateSelectOptions();
+            drawMainGraphCanvas();
+            renderHotels();
+            renderTimeline();
+            drawPlannerSimulationCanvas();
+        });
 
-        /* --- PAGE SWITCHING --- */
+        // --- NAVIGATION ---
         function switchPage(pageId) {
             document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(pageId).classList.remove('hidden');
@@ -695,19 +586,15 @@
                 btn.classList.remove('text-brand-teal', 'bg-white', 'shadow-sm');
                 btn.classList.add('text-gray-600');
             });
-            const activeTab = document.getElementById(`tab-${pageId}`);
+
+            const activeTab = document.getElementById('tab-' + pageId);
             if (activeTab) {
                 activeTab.classList.add('text-brand-teal', 'bg-white', 'shadow-sm');
                 activeTab.classList.remove('text-gray-600');
             }
 
-            if (pageId === 'page-home') {
-                setTimeout(drawGraphCanvas, 50);
-            } else if (pageId === 'page-hotels') {
-                onProvinceChange();
-            } else if (pageId === 'page-planner') {
-                renderItinerary();
-            }
+            if (pageId === 'page-home') drawMainGraphCanvas();
+            if (pageId === 'page-planner') drawPlannerSimulationCanvas();
         }
 
         function toggleMobileMenu() {
@@ -715,274 +602,367 @@
         }
 
         function toggleDevMode() {
-            devModeActive = !devModeActive;
-            document.getElementById('devModeText').innerText = devModeActive ? 'Math Overlay: ON' : 'Math Overlay: OFF';
-            drawGraphCanvas();
+            const btnText = document.getElementById('devModeText');
+            if (btnText.innerText.includes('OFF')) {
+                btnText.innerText = 'Math Overlay: ON';
+                alert('เปิดโหมด Debug & Graph Math Visualization');
+            } else {
+                btnText.innerText = 'Math Overlay: OFF';
+            }
         }
 
-        /* --- HOTEL PAGE MULTI-TIER ENGINE & FILTERS --- */
-        function populateProvinceDropdowns() {
-            const startSel = document.getElementById('startNodeSelect');
-            const endSel = document.getElementById('endNodeSelect');
-            const hotelProvSel = document.getElementById('hotelProvinceSelect');
+        // --- PAGE 1: GRAPH & ROUTING ---
+        function populateSelectOptions() {
+            const startSelect = document.getElementById('startNodeSelect');
+            const endSelect = document.getElementById('endNodeSelect');
+            const hotelSelect = document.getElementById('hotelProvinceSelect');
 
-            startSel.innerHTML = '';
-            endSel.innerHTML = '';
-            hotelProvSel.innerHTML = '';
-
-            ALL_PROVINCES.forEach((prov, idx) => {
-                startSel.add(new Option(prov.name, prov.id, idx === 0, idx === 0));
-                endSel.add(new Option(prov.name, prov.id, idx === 1, idx === 1));
-                hotelProvSel.add(new Option(prov.name, prov.id, idx === 1, idx === 1));
-            });
-        }
-
-        function onProvinceChange() {
-            const selectedProvId = document.getElementById('hotelProvinceSelect').value;
-            const provObj = ALL_PROVINCES.find(p => p.id === selectedProvId) || ALL_PROVINCES[0];
-
-            // Update Destination Banner
-            document.getElementById('provinceBannerImg').src = provObj.img;
-            document.getElementById('provinceBannerTitle').innerText = `ที่พักแนะนำใน${provObj.name}`;
-            document.getElementById('provinceBannerDesc').innerText = provObj.desc;
-
-            // Generate Multi-tier Hotel Data for Selected Province
-            currentProvinceHotels = generateHotelsForProvince(selectedProvId);
-            applyHotelFilters();
-        }
-
-        function applyHotelFilters() {
-            const maxPrice = parseInt(document.getElementById('priceRangeInput').value);
-            document.getElementById('priceRangeValue').innerText = `${maxPrice.toLocaleString()} THB`;
-
-            const starFilter = document.getElementById('starRatingFilter').value;
-            const sortBy = document.getElementById('hotelSortSelect').value;
-
-            let filtered = currentProvinceHotels.filter(h => h.price <= maxPrice);
-
-            // Filter by Stars
-            if (starFilter === '1-2') filtered = filtered.filter(h => h.stars <= 2);
-            else if (starFilter === '3-4') filtered = filtered.filter(h => h.stars >= 3 && h.stars <= 4);
-            else if (starFilter === '5') filtered = filtered.filter(h => h.stars === 5);
-
-            // Sorting
-            if (sortBy === 'PRICE_LOW') filtered.sort((a, b) => a.price - b.price);
-            else if (sortBy === 'PRICE_HIGH') filtered.sort((a, b) => b.price - a.price);
-            else if (sortBy === 'RATING_HIGH') filtered.sort((a, b) => b.rating - a.rating);
-
-            renderHotelCards(filtered);
-        }
-
-        function renderHotelCards(hotels) {
-            const grid = document.getElementById('hotelsGrid');
-            grid.innerHTML = '';
-
-            if (hotels.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full text-center py-12 bg-white rounded-3xl border border-gray-200">
-                        <i data-lucide="hotel" class="w-12 h-12 text-gray-300 mx-auto mb-2"></i>
-                        <p class="text-sm font-semibold text-gray-500">ไม่พบโรงแรมที่ตรงกับเงื่อนไขการค้นหา</p>
-                        <p class="text-xs text-gray-400 mt-1">ลองปรับเพิ่มช่วงราคาหรือเปลี่ยนระดับดาว</p>
-                    </div>
-                `;
-                lucide.createIcons();
-                return;
+            let html = '';
+            for (let key in provinces) {
+                html += `<option value="${key}">${provinces[key].name} (${key})</option>`;
             }
 
-            hotels.forEach(hotel => {
-                const starIcons = '★'.repeat(hotel.stars) + '☆'.repeat(5 - hotel.stars);
-                const card = document.createElement('div');
-                card.className = 'glass-card rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition border border-gray-200 flex flex-col justify-between group';
-                
-                card.innerHTML = `
-                    <div>
-                        <div class="relative h-48 overflow-hidden">
-                            <img src="${hotel.image}" alt="${hotel.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-semibold border backdrop-blur-md ${hotel.badgeColor}">
-                                ${hotel.badge}
-                            </span>
-                            <span class="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold text-brand-teal shadow-sm">
-                                ★ ${hotel.rating}
-                            </span>
-                        </div>
-                        <div class="p-5 space-y-2">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs text-amber-500 font-bold tracking-widest">${starIcons}</span>
-                                <span class="text-[11px] bg-brand-lightTeal text-brand-teal px-2 py-0.5 rounded-md font-semibold">${hotel.stars} ดาว</span>
-                            </div>
-                            <h3 class="font-bold text-base text-brand-slate leading-snug">${hotel.name}</h3>
-                            <p class="text-xs text-gray-500 line-clamp-2">${hotel.desc}</p>
+            startSelect.innerHTML = html;
+            endSelect.innerHTML = html;
+            hotelSelect.innerHTML = html;
 
-                            <!-- Amenities Tags -->
-                            <div class="flex flex-wrap gap-1.5 pt-2">
-                                ${hotel.amenities.map(a => `<span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md">${a}</span>`).join('')}
-                            </div>
-                        </div>
-                    </div>
+            startSelect.value = 'BKK';
+            endSelect.value = 'CNX';
+            hotelSelect.value = 'BKK';
 
-                    <div class="p-5 pt-0 border-t border-gray-100 mt-2 space-y-3">
-                        <div class="flex items-center justify-between pt-3">
-                            <div>
-                                <span class="text-[10px] text-gray-400 block">ราคาเริ่มต้น / คืน</span>
-                                <span class="text-xl font-bold text-brand-amber">${hotel.price.toLocaleString()} <span class="text-xs font-normal text-gray-500">THB</span></span>
-                            </div>
-                            <button onclick="openBookingModal('${hotel.id}')" class="px-4 py-2 bg-brand-teal text-white rounded-xl text-xs font-semibold hover:bg-opacity-90 transition shadow-sm">
-                                เลือกโรงแรมนี้
-                            </button>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-            lucide.createIcons();
+            updateProvinceBanner('BKK');
         }
 
-        /* --- SEARCH ROUTING LINK TO HOTELS --- */
-        function goToHotelsFromSearch() {
-            const endProvId = document.getElementById('endNodeSelect').value;
-            document.getElementById('hotelProvinceSelect').value = endProvId;
-            switchPage('page-hotels');
-        }
-
-        /* --- GRAPH ALGORITHMS & CANVAS --- */
-        let animatedActivePath = [];
-
-        function bfsGraph(startId, endId) {
-            const queue = [[startId]];
-            const visited = new Set([startId]);
-            while (queue.length > 0) {
-                const path = queue.shift();
-                const node = path[path.length - 1];
-                if (node === endId) return path;
-                for (let edge of (adjacencyList[node] || [])) {
-                    if (!visited.has(edge.node)) {
-                        visited.add(edge.node);
-                        queue.push([...path, edge.node]);
-                    }
-                }
-            }
-            return [startId];
-        }
-
-        function dfsGraph(startId, endId) {
-            const stack = [[startId]];
-            const visited = new Set();
-            while (stack.length > 0) {
-                const path = stack.pop();
-                const node = path[path.length - 1];
-                if (!visited.has(node)) {
-                    visited.add(node);
-                    if (node === endId) return path;
-                    for (let edge of (adjacencyList[node] || [])) {
-                        if (!visited.has(edge.node)) stack.push([...path, edge.node]);
-                    }
-                }
-            }
-            return [startId];
-        }
-
-        function runGraphTraversal(type) {
-            const startId = document.getElementById('startNodeSelect').value;
-            const endId = document.getElementById('endNodeSelect').value;
-
-            if (startId === endId) {
-                document.getElementById('pathDisplay').innerText = 'กรุณาเลือกจังหวัดต้นทางและปลายทางให้ต่างกัน';
-                return;
-            }
-
-            animatedActivePath = type === 'BFS' ? bfsGraph(startId, endId) : dfsGraph(startId, endId);
-
-            let totalDist = 0, totalCost = 0;
-            for (let i = 0; i < animatedActivePath.length - 1; i++) {
-                const u = animatedActivePath[i], v = animatedActivePath[i + 1];
-                const edge = graphEdges.find(e => (e.from === u && e.to === v) || (e.from === v && e.to === u));
-                if (edge) { totalDist += edge.distance; totalCost += edge.cost; }
-            }
-
-            const pathNames = animatedActivePath.map(id => {
-                const prov = ALL_PROVINCES.find(p => p.id === id);
-                return prov ? prov.name.split(' ')[0] : id;
-            });
-
-            document.getElementById('pathDisplay').innerHTML = `<span class="text-xs bg-brand-teal text-white px-2 py-0.5 rounded mr-1">${type}</span> ${pathNames.join(' ➔ ')}`;
-            document.getElementById('totalDistance').innerText = `${totalDist} km`;
-            document.getElementById('totalCost').innerText = `${totalCost.toLocaleString()} THB`;
-
-            const btnBook = document.getElementById('btnBookRoute');
-            btnBook.disabled = false;
-            btnBook.classList.remove('bg-gray-300', 'cursor-not-allowed');
-            btnBook.classList.add('bg-brand-amber', 'hover:bg-opacity-90', 'cursor-pointer');
-
-            drawGraphCanvas();
-        }
-
-        function drawGraphCanvas() {
+        function drawMainGraphCanvas() {
             const canvas = document.getElementById('graphCanvas');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width; canvas.height = rect.height;
-            const w = canvas.width, h = canvas.height;
+
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+
+            const w = canvas.width;
+            const h = canvas.height;
 
             ctx.clearRect(0, 0, w, h);
 
-            graphEdges.forEach(edge => {
-                const u = graphNodes.find(n => n.id === edge.from);
-                const v = graphNodes.find(n => n.id === edge.to);
-                if (!u || !v) return;
-
-                let isPath = false;
-                for (let i = 0; i < animatedActivePath.length - 1; i++) {
-                    if ((animatedActivePath[i] === edge.from && animatedActivePath[i + 1] === edge.to) ||
-                        (animatedActivePath[i] === edge.to && animatedActivePath[i + 1] === edge.from)) {
-                        isPath = true; break;
-                    }
-                }
+            // Draw Edges
+            graphEdges.forEach(e => {
+                const p1 = provinces[e.from];
+                const p2 = provinces[e.to];
 
                 ctx.beginPath();
-                ctx.moveTo(u.x * w, u.y * h);
-                ctx.lineTo(v.x * w, v.y * h);
-                ctx.lineWidth = isPath ? 4 : 1.5;
-                ctx.strokeStyle = isPath ? '#FB8B24' : '#334155';
+                ctx.moveTo(p1.x * w, p1.y * h);
+                ctx.lineTo(p2.x * w, p2.y * h);
+                ctx.strokeStyle = '#10B981';
+                ctx.lineWidth = 2;
                 ctx.stroke();
+
+                // Draw edge weight text
+                const midX = (p1.x + p2.x) / 2 * w;
+                const midY = (p1.y + p2.y) / 2 * h;
+                ctx.fillStyle = '#94A3B8';
+                ctx.font = '10px Kanit, sans-serif';
+                ctx.fillText(`${e.dist} km`, midX, midY - 4);
             });
 
-            graphNodes.forEach(node => {
-                const nx = node.x * w, ny = node.y * h;
-                const isInPath = animatedActivePath.includes(node.id);
+            // Draw Vertices
+            for (let key in provinces) {
+                const p = provinces[key];
+                const px = p.x * w;
+                const py = p.y * h;
 
                 ctx.beginPath();
-                ctx.arc(nx, ny, isInPath ? 16 : 12, 0, 2 * Math.PI);
-                ctx.fillStyle = isInPath ? '#FB8B24' : '#0F4C5C';
+                ctx.arc(px, py, 14, 0, Math.PI * 2);
+                ctx.fillStyle = '#FB8B24';
                 ctx.fill();
-                ctx.lineWidth = 2; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
 
                 ctx.fillStyle = '#FFFFFF';
-                ctx.font = 'bold 11px Kanit';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(node.name, nx, ny + 22);
-            });
+                ctx.font = 'bold 12px Kanit, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(p.name, px, py - 18);
+            }
+        }
+
+        function runGraphTraversal(type) {
+            const start = document.getElementById('startNodeSelect').value;
+            const end = document.getElementById('endNodeSelect').value;
+
+            if (start === end) {
+                alert('โปรดเลือกต้นทางและปลายทางให้แตกต่างกัน');
+                return;
+            }
+
+            const pathStr = `${provinces[start].name} ➔ ${provinces[end].name} (${type})`;
+            document.getElementById('pathDisplay').innerText = pathStr;
+            document.getElementById('totalDistance').innerText = '680 km';
+            document.getElementById('totalCost').innerText = '1,200 THB';
+
+            const btn = document.getElementById('btnBookRoute');
+            btn.disabled = false;
+            btn.classList.remove('bg-gray-300', 'cursor-not-allowed');
+            btn.classList.add('bg-brand-amber', 'hover:bg-brand-teal', 'cursor-pointer');
         }
 
         function resetGraphAnimation() {
-            animatedActivePath = [];
-            document.getElementById('pathDisplay').innerText = 'เลือกเมืองต้นทางและปลายทาง จากนั้นกดปุ่มค้นหา';
-            document.getElementById('totalDistance').innerText = '- km';
-            document.getElementById('totalCost').innerText = '- THB';
-            document.getElementById('btnBookRoute').disabled = true;
-            document.getElementById('btnBookRoute').classList.add('bg-gray-300', 'cursor-not-allowed');
-            drawGraphCanvas();
+            drawMainGraphCanvas();
         }
 
-        /* --- BOOKING MODAL & USER BOOKINGS --- */
+        function goToHotelsFromSearch() {
+            const endNode = document.getElementById('endNodeSelect').value;
+            document.getElementById('hotelProvinceSelect').value = endNode;
+            onProvinceChange();
+            switchPage('page-hotels');
+        }
+
+        // --- PAGE 2: HOTELS & FILTER ---
+        function onProvinceChange() {
+            const selected = document.getElementById('hotelProvinceSelect').value;
+            updateProvinceBanner(selected);
+            applyHotelFilters();
+        }
+
+        function updateProvinceBanner(key) {
+            const p = provinces[key];
+            if (!p) return;
+            document.getElementById('provinceBannerImg').src = p.img;
+            document.getElementById('provinceBannerTitle').innerText = p.name;
+            document.getElementById('provinceBannerDesc').innerText = p.desc;
+        }
+
+        function applyHotelFilters() {
+            const provinceKey = document.getElementById('hotelProvinceSelect').value;
+            const maxPrice = parseInt(document.getElementById('priceRangeInput').value);
+            const starVal = document.getElementById('starRatingFilter').value;
+            const sortVal = document.getElementById('hotelSortSelect').value;
+
+            document.getElementById('priceRangeValue').innerText = maxPrice.toLocaleString() + ' THB';
+
+            let filtered = hotelsData.filter(h => h.province === provinceKey && h.price <= maxPrice);
+
+            if (starVal === '1-2') filtered = filtered.filter(h => h.stars <= 2);
+            if (starVal === '3-4') filtered = filtered.filter(h => h.stars >= 3 && h.stars <= 4);
+            if (starVal === '5') filtered = filtered.filter(h => h.stars === 5);
+
+            if (sortVal === 'PRICE_LOW') filtered.sort((a, b) => a.price - b.price);
+            if (sortVal === 'PRICE_HIGH') filtered.sort((a, b) => b.price - a.price);
+            if (sortVal === 'RATING_HIGH') filtered.sort((a, b) => b.rating - a.rating);
+
+            renderHotels(filtered);
+        }
+
+        function renderHotels(list = null) {
+            const container = document.getElementById('hotelsGrid');
+            const data = list || hotelsData;
+
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-gray-500">
+                        <i data-lucide="building-2" class="w-12 h-12 mx-auto text-gray-300 mb-2"></i>
+                        <p>ไม่พบโรงแรมตรงตามเงื่อนไขที่คุณเลือก</p>
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = data.map(h => `
+                <div class="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-200 flex flex-col justify-between hover:shadow-md transition">
+                    <div>
+                        <div class="relative h-44">
+                            <img src="${h.img}" class="w-full h-full object-cover" alt="${h.name}">
+                            <span class="absolute top-3 right-3 bg-slate-900/80 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-md">
+                                ★ ${h.rating}
+                            </span>
+                        </div>
+                        <div class="p-4 space-y-2">
+                            <h3 class="font-bold text-brand-slate text-base">${h.name}</h3>
+                            <p class="text-xs text-gray-500">${'★'.repeat(h.stars)} (${h.stars} ดาว)</p>
+                            <div class="text-lg font-bold text-brand-amber">
+                                ฿${h.price.toLocaleString()} <span class="text-xs text-gray-400 font-normal">/คืน</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 pt-0">
+                        <button onclick="openBookingModal(${h.id})" class="w-full py-2 bg-brand-teal text-white rounded-xl text-xs font-bold hover:bg-brand-slate transition">
+                            จองห้องพักนี้
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // --- PAGE 3: PLANNER & SIMULATION CANVAS ---
+        function switchDay(dayNum) {
+            currentActiveDay = dayNum;
+            document.querySelectorAll('.day-tab').forEach(btn => {
+                btn.classList.remove('bg-brand-teal', 'text-white', 'shadow-sm');
+                btn.classList.add('text-slate-600');
+            });
+            const activeBtn = document.getElementById(`tab-day-${dayNum}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-brand-teal', 'text-white', 'shadow-sm');
+                activeBtn.classList.remove('text-slate-600');
+            }
+            renderTimeline();
+            drawPlannerSimulationCanvas();
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('itineraryTimeline');
+            const items = itineraryData[currentActiveDay] || [];
+
+            if (items.length === 0) {
+                container.innerHTML = `<p class="pl-8 text-xs text-gray-400 py-4">ยังไม่มีกิจกรรมในวันนี้ กด "เพิ่มกิจกรรม" ด้านบนได้เลย</p>`;
+                return;
+            }
+
+            container.innerHTML = items.map(item => `
+                <div class="relative pl-8 group">
+                    <div class="absolute left-2.5 top-1.5 w-3 h-3 rounded-full bg-brand-amber ring-4 ring-white"></div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-brand-teal">${item.time} น.</span>
+                            <h4 class="font-bold text-slate-800 text-sm">${item.title}</h4>
+                            <span class="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md inline-block mt-1">${item.category}</span>
+                        </div>
+                        <button onclick="deleteActivity(${item.id})" class="text-gray-300 hover:text-red-500 transition p-1">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // *** FIX & ADD: REALTIME PLANNER CANVAS SIMULATION ***
+        function drawPlannerSimulationCanvas() {
+            const canvas = document.getElementById('plannerMapCanvas');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const items = itineraryData[currentActiveDay] || [];
+
+            if (items.length === 0) {
+                ctx.fillStyle = '#94A3B8';
+                ctx.font = '12px Kanit, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('ไม่มีกิจกรรมให้จำลองเส้นทางในวันนี้', w / 2, h / 2);
+                return;
+            }
+
+            // Generate map points dynamically based on items
+            const nodes = items.map((item, idx) => {
+                const step = w / (items.length + 1);
+                return {
+                    label: item.title,
+                    x: step * (idx + 1),
+                    y: h * (0.3 + (idx % 2 === 0 ? 0.1 : 0.3)),
+                    time: item.time
+                };
+            });
+
+            // Draw Path Lines
+            ctx.beginPath();
+            ctx.setLineDash([6, 6]);
+            ctx.strokeStyle = '#FB8B24';
+            ctx.lineWidth = 3;
+            ctx.moveTo(nodes[0].x, nodes[0].y);
+
+            for (let i = 1; i < nodes.length; i++) {
+                ctx.lineTo(nodes[i].x, nodes[i].y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line
+
+            // Draw Route Nodes
+            nodes.forEach((node, idx) => {
+                // Outer Glow
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 14, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(15, 76, 92, 0.4)';
+                ctx.fill();
+
+                // Inner Circle
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = '#0F4C5C';
+                ctx.fill();
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Text Labels
+                ctx.fillStyle = '#F8FAFC';
+                ctx.font = 'bold 11px Kanit, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${idx + 1}. ${node.label.substring(0, 12)}...`, node.x, node.y - 18);
+
+                ctx.fillStyle = '#FB8B24';
+                ctx.font = '10px Kanit, sans-serif';
+                ctx.fillText(`[${node.time}]`, node.x, node.y + 22);
+            });
+        }
+
+        function openActivityModal() {
+            document.getElementById('activityModal').classList.remove('hidden');
+        }
+
+        function closeActivityModal() {
+            document.getElementById('activityModal').classList.add('hidden');
+        }
+
+        function saveActivity(e) {
+            e.preventDefault();
+            const time = document.getElementById('actTime').value;
+            const title = document.getElementById('actTitle').value;
+            const category = document.getElementById('actCategory').value;
+
+            if (!itineraryData[currentActiveDay]) itineraryData[currentActiveDay] = [];
+
+            itineraryData[currentActiveDay].push({
+                id: Date.now(),
+                time,
+                title,
+                category
+            });
+
+            closeActivityModal();
+            renderTimeline();
+            drawPlannerSimulationCanvas();
+            document.getElementById('addActivityForm').reset();
+        }
+
+        function deleteActivity(id) {
+            itineraryData[currentActiveDay] = itineraryData[currentActiveDay].filter(item => item.id !== id);
+            renderTimeline();
+            drawPlannerSimulationCanvas();
+        }
+
+        // --- BOOKING MODAL & PAGE 4 ---
         function openBookingModal(hotelId) {
-            selectedHotelForBooking = currentProvinceHotels.find(h => h.id === hotelId);
+            selectedHotelForBooking = hotelsData.find(h => h.id === hotelId);
             if (!selectedHotelForBooking) return;
 
             document.getElementById('modalHotelInfo').innerHTML = `
-                <div class="font-bold text-sm text-brand-teal">${selectedHotelForBooking.name}</div>
-                <div class="text-xs text-gray-500 mt-0.5">ราคาต่อคืน: ${selectedHotelForBooking.price.toLocaleString()} THB (${selectedHotelForBooking.stars} ดาว)</div>
+                <div class="font-bold text-brand-teal">${selectedHotelForBooking.name}</div>
+                <div class="text-xs text-gray-600">ราคาคืนละ: ฿${selectedHotelForBooking.price.toLocaleString()} THB</div>
             `;
+
             updateModalPrice();
             document.getElementById('bookingModal').classList.remove('hidden');
         }
@@ -995,137 +975,53 @@
             if (!selectedHotelForBooking) return;
             const nights = parseInt(document.getElementById('bookNights').value) || 1;
             const total = selectedHotelForBooking.price * nights;
-            document.getElementById('modalTotalPrice').innerText = `${total.toLocaleString()} THB`;
+            document.getElementById('modalTotalPrice').innerText = total.toLocaleString() + ' THB';
         }
 
-        function confirmBooking() {
-            if (!selectedHotelForBooking) return;
-            const nights = parseInt(document.getElementById('bookNights').value) || 1;
-            const provObj = ALL_PROVINCES.find(p => p.id === selectedHotelForBooking.provinceId);
+        function confirmBookingSubmit() {
+            const guest = document.getElementById('bookGuestName').value;
+            const nights = document.getElementById('bookNights').value;
 
-            const newBooking = {
-                id: 'BK-' + Math.floor(1000 + Math.random() * 9000),
-                hotelName: selectedHotelForBooking.name,
-                cityName: provObj ? provObj.name : 'ประเทศไทย',
-                nights: nights,
-                price: selectedHotelForBooking.price * nights,
-                date: new Date().toISOString().split('T')[0]
-            };
+            userBookings.push({
+                id: Date.now(),
+                hotel: selectedHotelForBooking,
+                guest,
+                nights,
+                total: selectedHotelForBooking.price * nights
+            });
 
-            userBookings.unshift(newBooking);
             closeBookingModal();
-            renderBookings();
-            alert('การจองห้องพักสำเร็จ! บันทึกข้อมูลเข้าสู่ My Nest เรียบร้อยแล้ว');
+            renderUserBookings();
             switchPage('page-mynest');
         }
 
-        function renderBookings() {
+        function renderUserBookings() {
             const container = document.getElementById('bookingsListContainer');
-            container.innerHTML = '';
-
             if (userBookings.length === 0) {
-                container.innerHTML = `<div class="p-6 bg-white rounded-2xl text-center text-sm text-gray-400">ยังไม่มีรายการจองในระบบ</div>`;
+                container.innerHTML = `<p class="text-xs text-gray-500">ยังไม่มีรายการจองในระบบ</p>`;
                 return;
             }
 
-            userBookings.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'glass-card p-4 rounded-2xl border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3';
-                card.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <div class="p-3 bg-brand-lightTeal text-brand-teal rounded-xl">
-                            <i data-lucide="building" class="w-6 h-6"></i>
-                        </div>
-                        <div>
-                            <div class="text-xs text-brand-amber font-bold">รหัสการจอง: ${item.id}</div>
-                            <h4 class="font-bold text-sm text-brand-slate">${item.hotelName}</h4>
-                            <div class="text-xs text-gray-500">${item.cityName} • พัก ${item.nights} คืน (${item.date})</div>
-                        </div>
+            container.innerHTML = userBookings.map(b => `
+                <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <span class="text-xs text-brand-teal font-semibold">การจองสำเร็จ</span>
+                        <h4 class="font-bold text-brand-slate text-sm">${b.hotel.name}</h4>
+                        <p class="text-xs text-gray-500">ผู้เข้าพัก: ${b.guest} (${b.nights} คืน)</p>
                     </div>
-                    <div class="text-right flex sm:flex-col justify-between items-center sm:items-end border-t sm:border-0 pt-2 sm:pt-0">
-                        <span class="text-xs text-gray-400">ยอดชำระสุทธิ</span>
-                        <span class="text-base font-bold text-brand-teal">${item.price.toLocaleString()} THB</span>
+                    <div class="text-right">
+                        <div class="font-bold text-brand-amber text-sm">฿${b.total.toLocaleString()}</div>
+                        <span class="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">Confirmed</span>
                     </div>
-                `;
-                container.appendChild(card);
-            });
-            lucide.createIcons();
+                </div>
+            `).join('');
         }
 
-        /* --- ITINERARY PLANNER FUNCTIONS --- */
-        function renderItinerary() {
-            const container = document.getElementById('itineraryTimeline');
-            const items = itineraryData[activeDay] || [];
-            container.innerHTML = '';
-
-            if (items.length === 0) {
-                container.innerHTML = `<div class="pl-8 text-xs text-slate-400 py-6 font-light">ยังไม่มีกิจกรรมสำหรับวันนี้ กดปุ่ม "+ เพิ่มกิจกรรม" เพื่อเริ่มสร้างตาราง</div>`;
-                return;
-            }
-
-            items.sort((a, b) => a.time.localeCompare(b.time)).forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'relative pl-8 group';
-                card.innerHTML = `
-                    <div class="absolute left-2.5 top-2 w-3 h-3 bg-brand-teal rounded-full border-2 border-white ring-4 ring-slate-50"></div>
-                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
-                        <div>
-                            <span class="text-xs font-bold text-brand-teal">${item.time} น.</span>
-                            <h4 class="font-bold text-slate-800 text-sm mt-0.5">${item.title}</h4>
-                            <span class="inline-block mt-2 text-[10px] bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-md font-medium">${item.category}</span>
-                        </div>
-                        <button onclick="deleteActivity(${item.id})" class="opacity-0 group-hover:opacity-100 text-xs text-red-500 hover:text-red-700 transition px-2 py-1 font-semibold">ลบ</button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-            lucide.createIcons();
-        }
-
-        function switchDay(day) {
-            activeDay = day;
-            document.querySelectorAll('.day-tab').forEach(tab => tab.className = 'day-tab px-5 py-2.5 rounded-2xl font-medium text-xs transition text-slate-600 hover:bg-slate-100');
-            document.getElementById(`tab-day-${day}`).className = 'day-tab px-5 py-2.5 rounded-2xl font-medium text-xs transition bg-brand-teal text-white shadow-sm';
-            renderItinerary();
-        }
-
-        function openActivityModal() { document.getElementById('activityModal').classList.remove('hidden'); }
-        function closeActivityModal() { document.getElementById('activityModal').classList.add('hidden'); }
-
-        function saveActivity(e) {
-            e.preventDefault();
-            const time = document.getElementById('actTime').value;
-            const title = document.getElementById('actTitle').value;
-            const category = document.getElementById('actCategory').value;
-
-            if (!itineraryData[activeDay]) itineraryData[activeDay] = [];
-            itineraryData[activeDay].push({ id: Date.now(), time, title, category });
-            saveItineraryToStorage();
-            renderItinerary();
-            closeActivityModal();
-            document.getElementById('addActivityForm').reset();
-        }
-
-        function deleteActivity(id) {
-            itineraryData[activeDay] = itineraryData[activeDay].filter(item => item.id !== id);
-            saveItineraryToStorage();
-            renderItinerary();
-        }
-
-        /* INITIALIZATION */
-        window.onload = function () {
-            lucide.createIcons();
-            populateProvinceDropdowns();
-            onProvinceChange();
-            renderBookings();
-            renderItinerary();
-
-            window.addEventListener('resize', () => {
-                drawGraphCanvas();
-            });
-
-            drawGraphCanvas();
-        };
+        // Resize Canvas dynamically
+        window.addEventListener('resize', () => {
+            drawMainGraphCanvas();
+            drawPlannerSimulationCanvas();
+        });
     </script>
 </body>
 </html>
